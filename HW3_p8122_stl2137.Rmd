@@ -1,0 +1,70 @@
+---
+title: "P8122 HW3"
+author: "Sabrina Lin stl2137"
+date: "11/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tableone)
+```
+
+# Part 1
+
+```{r}
+### read in data
+salary_dat <- read_csv("/Users/SabrinaLin/Documents/Fall_2020_Causal_Inference/Homework/HW3/p8122_hw3_stl2137/hW3\ data.csv") %>% 
+  mutate(
+    treat = as.factor(treat),
+    black = as.factor(black),
+    hispan = as.factor(hispan),
+    married = as.factor(married),
+    nodegree = as.factor(nodegree)
+  )
+```
+
+* data consists of 10 variables measured for each individual:
+
+  * an indicator of treatment assignment (job training), `treat` 
+  
+  * age in years, `age`
+  
+  * education in years, `educ`
+  
+  * an indicator for African-American, `black` 
+  
+  * an indicator for Hispanic, `hispan`
+  
+  * an indicator for married, `married`
+  
+  * an indicator for high school degree, `nodegree`
+  
+  * income in 1974, `re74` 
+  
+  * income in 1975 `re75` 
+  
+  * income in 1978, `re78`
+
+* The variable `treat` is the treatment and the variables `re78` is the outcome.
+
+## Subpart 1
+Write the DAG representing this observational study including all variables provided. Describe all the variables in the graph.
+
+
+## Subpart 2
+Evaluate covariate balance in this observational study. Show a table or a plot. Interpret the results.
+
+```{r}
+## Construct a table
+vars <- c("age", "educ", "black", "hispan", "married", "nodegree", "re74", "re75", "re78")
+
+tab_presub <- CreateTableOne(vars = vars, strata = "treat", data = salary_dat, test = FALSE)
+
+print(tab_presub, smd = TRUE)
+```
+
+* Given that we would like the SMD to be less than 0.2 and having seen 0.25 as a common guideline for SMD in the literature, there are several variables that surpass this rule of thumb. The SMD (standardized mean difference) for the variable `black` is very large at 1.671, indicating that the covariate balance for this variable is not good. The variables `married` and `re74` also have relatively large SMDs (0.721 and 0.596 respectively), also indicating that the covariate balance for these variables is not great. 
+
+
