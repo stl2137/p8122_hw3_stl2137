@@ -2,13 +2,16 @@
 title: "P8122 HW3"
 author: "Sabrina Lin stl2137"
 date: "11/21/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(tableone)
+library(mlogit)
 ```
 
 # Part 1
@@ -67,4 +70,65 @@ print(tab_presub, smd = TRUE)
 
 * Given that we would like the SMD to be less than 0.2 and having seen 0.25 as a common guideline for SMD in the literature, there are several variables that surpass this rule of thumb. The SMD (standardized mean difference) for the variable `black` is very large at 1.671, indicating that the covariate balance for this variable is not good. The variables `married` and `re74` also have relatively large SMDs (0.721 and 0.596 respectively), also indicating that the covariate balance for these variables is not great. 
 
+## Subpart 3
+The propensity score is defined as the probability of receiving the treatment given the observed covariates. These scores are used to construct strata within which we assume that the exposure assignment is random. Construct propensity scores by fitting a logistic regression to the data.
+
+```{r}
+salary_mlogit_dat <- mlogit.data(salary_dat, choice = "treat", shape = "wide")
+fit_sal <- mlogit(treat ~ 0 | age + educ + black + hispan + married + nodegree + re74 + re75, data = salary_mlogit_dat)
+summary(fit_sal)
+
+ps_model <- glm(treat ~ age + educ + black + hispan + married + nodegree + re74 + re75, data = salary_dat, family = binomial)
+summary(ps_model)
+
+salary_dat$ps <- predict(ps_model, type = "response")
+
+```
+
+# Subpart 4
+Given the propensity scores estimated, evaluate overlap. Trim data if necessary and evaluate the impact of trimming in your analytic sample on efficiency and generalizability.
+
+```{r}
+### visualization of overlap 
+
+prop_func <- function(x, trt)
+{
+    # fit propensity score model
+  propens.model <- glm(treat ~ age + educ + black + hispan + married + nodegree + re74 + re75, data = salary_dat, family = binomial)
+  pi.x <- predict(propens.model, type = "response")
+  pi.x
+}
+
+check.overlap(x = salary_dat,
+              trt = salary_dat$treat,
+              propensity.func = prop_func)
+
+### now add density plot with histogram
+
+check.overlap(x = salary_dat,
+              trt = salary_dat$treat,
+              type = "both",
+              propensity.func = prop_func)
+```
+
+```{r}
+#eliminate non comparable cases and generate the analytic data
+
+
+
+
+#eliminate controls for whom the P(A=1|C) is less that the min(P(A=1|C)) found in the treated group
+min(ps[x$PracticeType==1])
+ps[which(x$PracticeType_bin==0)]<= min(ps[x$PracticeType==1])
+length(ps[which(x$PracticeType_bin==0)]<= min(ps[x$PracticeType==1]))
+#eliminate treated for whom the P(A=1|C) is greater that the max(P(A=1|C)) found in the control group
+max(ps[x$PracticeType==0])
+ps[which(x$PracticeType_bin==1)]>= max(ps[x$PracticeType==0])
+
+length(ps[which(x$PracticeType_bin==0)]<= min(ps[x$PracticeType==0]))
+
+data = x[ps>=min(ps[x$PracticeType==1]) & ps <= max(ps[x$PracticeType==0]),] 
+dim(x)
+dim(data)
+```
 
