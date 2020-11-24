@@ -174,5 +174,130 @@ check.overlap(x = data,
               propensity.func = prop_func_post_trim)
 ```
 
-* Looking at the post-trimming density plot, we can visually see that trimming has made the covariate balance better than pre-trimming. 
+* Looking at the post-trimming density plot, we can visually see that trimming has made the covariate balance better than pre-trimming; however, it is still not ideal. 
+
+## Subpart 6
+Using the propensity scores estimated use subclassification to balance covariates between treated and controls. Explain your process, report the breaks you decide on for your subclasses, show a plot of the propensity scores with these breaks. Inspect covariate balance for each subclass.
+
+```{r}
+### creating subclasses attempt 1
+subclass.breaks = quantile(ps, c(.20, .40, .60, .80)) # bins (initial try - modify as needed)
+subclass = data$ps
+subclass = as.numeric(data$ps>subclass.breaks[1])
+subclass[which(data$ps>subclass.breaks[1]& data$ps<=subclass.breaks[2])]<- 1
+subclass[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks[3])]<- 2
+subclass[which(data$ps>subclass.breaks[3])]<- 3
+
+table(data$treat, subclass) # doesn't violate overlap, but we can try for better
+```
+
+* Although overlap is not technically violated, the balance for the first subgroup is extremely poor. The second subgroup also does not have great balance, so we will continue trying subclassification at different percentile breaks. 
+
+```{r}
+#creating subclasses
+subclass.breaks = quantile(data$ps, c(.25, .50, .75)) 
+subclass = data$ps
+subclass = as.numeric(data$ps>subclass.breaks[1])
+subclass[which(data$ps>subclass.breaks[1]& data$ps<=subclass.breaks[2])]<- 1
+subclass[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks[3])]<- 2
+subclass[which(data$ps>subclass.breaks[3])]<- 3
+
+table(data$treat, subclass) # doesn't violate overlap, but try for better
+```
+
+* The first and second subgroup balance is still not fantastic, so we will continue trying subclassification at different percentile breaks. 
+
+```{r}
+#creating subclasses
+subclass.breaks = quantile(data$ps, c(.33, 0.67)) 
+subclass = data$ps
+subclass = as.numeric(data$ps>subclass.breaks[1])
+subclass[which(data$ps>subclass.breaks[1]& data$ps<=subclass.breaks[2])]<- 1
+subclass[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks[3])]<- 2
+subclass[which(data$ps>subclass.breaks[3])]<- 3
+
+table(data$treat, subclass)
+```
+
+* Although the second subgroup has really good balance, the first subgroup has poor balance. We will continue trying aditional subclassification percentiles. 
+
+```{r}
+#creating subclasses
+subclass.breaks = quantile(data$ps, c(.48, 0.5, 0.75)) 
+subclass = data$ps
+subclass = as.numeric(data$ps>subclass.breaks[1])
+subclass[which(data$ps>subclass.breaks[1]& data$ps<=subclass.breaks[2])]<- 1
+subclass[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks[3])]<- 2
+subclass[which(data$ps>subclass.breaks[3])]<- 3
+
+table(data$treat, subclass)
+```
+
+* After additional searching, having 4 subclasses with percentile breaks at 0.48, 0.5, and 0.75 seems to lead to better balance across the subclasses. Although the first subclass still has sub-optimal covariate balance and the last subclass does not have the best covariate balance, the second and third subclasses have pretty good balance. We will proceed to inspect the covariate balance for each subclass more in depth. 
+
+```{r}
+#looking at propensity scores within subclasses
+prop.func <- function(x, trt)
+{
+  
+  data$ps[which(data$ps <= subclass.breaks[1])]
+}
+#data$ps <-ps
+check.overlap(x = data[which(data$ps <=subclass.breaks[1]),],
+              trt = data$treat[which(data$ps <= subclass.breaks[1])],
+              type = "both",
+              propensity.func = prop.func)
+
+
+prop.func <- function(x, trt)
+{
+ 
+  data$ps[which(data$ps>subclass.breaks[1]&data$ps<=subclass.breaks[2])]
+}
+#data$ps <-ps
+check.overlap(x = data[which(data$ps>subclass.breaks[1]&data$ps<=subclass.breaks[2]),],
+              trt = data$treat[which(data$ps>subclass.breaks[1]&data$ps<=subclass.breaks[2])],
+              type = "both",
+              propensity.func = prop.func)
+
+prop.func <- function(x, trt)
+{
+  
+  data$ps[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks[3])]
+}
+#data$ps <-ps
+check.overlap(x = data[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks[3]),],
+              trt = data$treat[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks[3])],
+              type = "both",
+              propensity.func = prop.func)
+
+
+
+ prop.func <- function(x, trt)
+ {
+   
+   data$ps[which(data$ps>subclass.breaks[3])]
+ }
+ #data$ps <-ps
+ check.overlap(x = data[which(data$ps>subclass.breaks[3]),],
+               trt = data$treat[which(data$ps>subclass.breaks[3])],
+               type = "both",
+               propensity.func = prop.func)
+ 
+
+```
+
+```{r}
+tab_s0 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==0),], test = FALSE)
+tab_s1 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==1),], test = FALSE)
+tab_s2 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==2),], test = FALSE)
+tab_s3 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==3),], test = FALSE)
+
+## Show table with SMD
+
+print(tab_s0, smd = TRUE)
+print(tab_s1, smd = TRUE)
+print(tab_s2, smd = TRUE)
+print(tab_s3, smd = TRUE)
+```
 
