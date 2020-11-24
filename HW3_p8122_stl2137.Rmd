@@ -136,3 +136,43 @@ dim(salary_dat)
 dim(data)
 ```
 
+* After trimming the data, we lose `r dim(salary_dat)[1] - dim(data)[1]` observations. Although trimming these `r dim(salary_dat)[1] - dim(data)[1]` observations improves the internal validity since we are able to ensure comparability for the remaining units, it hurts generalizability because we are excluding certain people in the population to get to a better causal effect. 
+
+## Subpart 5
+Evaluate covariate balance in the trimmed sample.
+
+```{r}
+tab_postsub <- CreateTableOne(vars = vars, strata = "treat", data = data, test = FALSE)
+
+print(tab_presub, smd = TRUE)
+
+print(tab_postsub, smd = TRUE)
+```
+
+* Comparing the pre- and post- trimmed samples, the post-trimmed samples had lower SMDs compared to the pre-trimmed samples. The SMDs that were high in the pre-trimmed sample (`black`, `married`, `re74`) are lower in the post-trimmed sample (`black` decreased from 1.671 to 1.515, `married` decreased from 0.721 to 0.534, `re74` decreased from 0.596 to 0.363.) Although they have decreased, all 3 variables RMDs are still higher than the threshold of 0.2 (as given in class) or 0.25 (found independently in the literature). 
+
+```{r}
+### visualization of overlap post trimming
+
+prop_func_post_trim <- function(x, trt)
+{
+    # fit propensity score model
+  propens.model <- glm(treat ~ age + educ + black + hispan + married + nodegree + re74 + re75, data = data, family = binomial)
+  pi.x <- predict(propens.model, type = "response")
+  pi.x
+}
+
+check.overlap(x = data,
+              trt = data$treat,
+              propensity.func = prop_func_post_trim)
+
+### now add density plot with histogram
+
+check.overlap(x = data,
+              trt = data$treat,
+              type = "both",
+              propensity.func = prop_func_post_trim)
+```
+
+* Looking at the post-trimming density plot, we can visually see that trimming has made the covariate balance better than pre-trimming. 
+
