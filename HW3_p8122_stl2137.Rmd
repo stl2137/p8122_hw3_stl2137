@@ -13,6 +13,7 @@ library(tidyverse)
 library(tableone)
 library(mlogit)
 library(personalized)
+library(ri)
 ```
 
 # Part 1
@@ -30,7 +31,6 @@ salary_dat <- read_csv("/Users/SabrinaLin/Documents/Fall_2020_Causal_Inference/H
 
 salary_dat <- as.data.frame(salary_dat)
 ```
-
 
 * data consists of 10 variables measured for each individual:
 
@@ -59,37 +59,43 @@ salary_dat <- as.data.frame(salary_dat)
 ## Subpart 1
 Write the DAG representing this observational study including all variables provided. Describe all the variables in the graph.
 
+```{r}
+knitr::include_graphics("./HW3_p8122_DAG.png")
+```
+
+* Based off the DAG, `nodegree` is a collider between `black` and `hispanic`, so we will not adjust for it. 
+
+* There is no backdoor path with `married`, so we will not adjust for it. 
 
 ## Subpart 2
 Evaluate covariate balance in this observational study. Show a table or a plot. Interpret the results.
 
 ```{r}
 ## Construct a table
-vars <- c("age", "educ", "black", "hispan", "married", "nodegree", "re74", "re75", "re78")
+vars <- c("age", "educ", "black", "hispan", "re74", "re75")
 
 tab_presub <- CreateTableOne(vars = vars, strata = "treat", data = salary_dat, test = FALSE)
 
 print(tab_presub, smd = TRUE)
 ```
 
-* Given that we would like the SMD to be less than 0.2 and having seen 0.25 as a common guideline for SMD in the literature, there are several variables that surpass this rule of thumb. The SMD (standardized mean difference) for the variable `black` is very large at 1.671, indicating that the covariate balance for this variable is not good. The variables `married` and `re74` also have relatively large SMDs (0.721 and 0.596 respectively), also indicating that the covariate balance for these variables is not great. 
+* Given that we would like the SMD to be less than 0.2 and having seen 0.25 as a common guideline for SMD in the literature, there are several variables that surpass this rule of thumb. The SMD (standardized mean difference) for the variable `black` is very large at 1.671, indicating that the covariate balance for this variable is not good. The variable`re74` also has a  relatively large SMDs (0.596 respectively), also indicating that the covariate balance for `re74` is not great. 
 
 ## Subpart 3
 The propensity score is defined as the probability of receiving the treatment given the observed covariates. These scores are used to construct strata within which we assume that the exposure assignment is random. Construct propensity scores by fitting a logistic regression to the data.
 
 ```{r}
 salary_mlogit_dat <- mlogit.data(salary_dat, choice = "treat", shape = "wide")
-fit_sal <- mlogit(treat ~ 0 | age + educ + black + hispan + married + nodegree + re74 + re75, data = salary_mlogit_dat)
+fit_sal <- mlogit(treat ~ 0 | age + educ + black + hispan +  re74 + re75, data = salary_mlogit_dat)
 summary(fit_sal)
 
-ps_model <- glm(treat ~ age + educ + black + hispan + married + nodegree + re74 + re75, data = salary_dat, family = binomial)
+ps_model <- glm(treat ~ age + educ + black + hispan + re74 + re75, data = salary_dat, family = binomial)
 summary(ps_model)
 
 salary_dat$ps <- predict(ps_model, type = "response")
-
 ```
 
-# Subpart 4
+## Subpart 4
 Given the propensity scores estimated, evaluate overlap. Trim data if necessary and evaluate the impact of trimming in your analytic sample on efficiency and generalizability.
 
 ```{r}
@@ -98,7 +104,7 @@ Given the propensity scores estimated, evaluate overlap. Trim data if necessary 
 prop_func <- function(x, trt)
 {
     # fit propensity score model
-  propens.model <- glm(treat ~ age + educ + black + hispan + married + nodegree + re74 + re75, data = salary_dat, family = binomial)
+  propens.model <- glm(treat ~ age + educ + black + hispan + re74 + re75, data = salary_dat, family = binomial)
   pi.x <- predict(propens.model, type = "response")
   pi.x
 }
@@ -149,7 +155,7 @@ print(tab_presub, smd = TRUE)
 print(tab_postsub, smd = TRUE)
 ```
 
-* Comparing the pre- and post- trimmed samples, the post-trimmed samples had lower SMDs compared to the pre-trimmed samples. The SMDs that were high in the pre-trimmed sample (`black`, `married`, `re74`) are lower in the post-trimmed sample (`black` decreased from 1.671 to 1.515, `married` decreased from 0.721 to 0.534, `re74` decreased from 0.596 to 0.363.) Although they have decreased, all 3 variables RMDs are still higher than the threshold of 0.2 (as given in class) or 0.25 (found independently in the literature). 
+* Comparing the pre- and post- trimmed samples, the post-trimmed sample had lower SMDs compared to the pre-trimmed samples except for `hispan`, which will be discussed further. The SMDs that were high in the pre-trimmed sample (`black`, `re74`) are lower in the post-trimmed sample (`black` decreased from 1.671 to 1.421, and `re74` decreased from 0.596 to 0.159.) The SMDs for `age`, `educ`, and `re75` also decreased, making them now all below the 0.2 threshold 
 
 ```{r}
 ### visualization of overlap post trimming
@@ -301,6 +307,100 @@ print(tab_s2, smd = TRUE)
 print(tab_s3, smd = TRUE)
 ```
 
+## Subpart 7
+Using your subclasses from Question (6), estimate the marginal average causal effect of participation in a job training on wages. Give a point estimate, a confidence interval, and a p-value for whether it had any effect, and interpret these results in context.
+
+
+```{r}
+ACE0 <- mean(data$re78[which(subclass==0 & data$treat==1)])-mean(data$re78[which(subclass==0 & data$treat==0)])
+ACE1 <- mean(data$re78[which(subclass==1 & data$treat==1)])-mean(data$re78[which(subclass==1 & data$treat==0)])
+ACE2 <- mean(data$re78[which(subclass==2 & data$treat==1)])-mean(data$re78[which(subclass==2 & data$treat==0)])
+ACE3 <- mean(data$re78[which(subclass==3 & data$treat==1)])-mean(data$re78[which(subclass==3 & data$treat==0)])
+
+ace <- (nrow(data[which(subclass==0),])/nrow(data))*ACE0+
+  (nrow(data[which(subclass==1),])/nrow(data))*ACE1+
+  (nrow(data[which(subclass==2),])/nrow(data))*ACE2
+(nrow(data[which(subclass==3),])/nrow(data))*ACE3
+
+
+v01 <- var(data$re78[which(subclass==0 & data$treat==1)])
+v00 <- var(data$re78[which(subclass==0 & data$treat==0)])
+
+v11 <- var(data$re78[which(subclass==1 & data$treat==1)])
+v10 <- var(data$re78[which(subclass==1 & data$treat==0)])
+
+v21 <- var(data$re78[which(subclass==2 & data$treat==1)])
+v20 <- var(data$re78[which(subclass==2 & data$treat==0)])
+
+v31 <- var(data$re78[which(subclass==3 & data$treat==1)])
+v30 <- var(data$re78[which(subclass==3 & data$treat==0)])
+
+
+n0 <- nrow(data[which(subclass==0),])
+n1 <- nrow(data[which(subclass==1),])
+           n2 <- nrow(data[which(subclass==2),])
+                      n3 <- nrow(data[which(subclass==3),])
+                                                       
+           n01 <- nrow(data[which(subclass==0& data$treat==1),])
+           n11 <- nrow(data[which(subclass==1& data$treat==1),])
+                                            n21 <- nrow(data[which(subclass==2& data$treat==1),])
+                                            n31 <- nrow(data[which(subclass==3& data$treat==1),])
+                                            n00 <- nrow(data[which(subclass==0& data$treat==0),])
+                                        
+                                            n10 <- nrow(data[which(subclass==1& data$treat==0),])
+                                            n20 <- nrow(data[which(subclass==2& data$treat==0),])
+                                            n30 <- nrow(data[which(subclass==3& data$treat==0),])
+                                            
+                                            varace <-(n1)^2/nrow(data)^2*((v11/n11)+(v10/n10))+
+  
+  (n2)^2/nrow(data)^2*((v21/n21)+(v20/n20))+
+  (n3)^2/nrow(data)^2*((v31/n31)+(v30/n30))+
+  (n0)^2/nrow(data)^2*((v01/n01)+(v00/n00))
+
+sdace<-sqrt(varace)
+
+### upper and lower CI 
+CIL=ace-sdace*2
+CIU=ace+sdace*2
+```
+
+```{r}
+### p-value
+y_obs <- data$re78
+a_treat <- data$treat
+group_mean_dat <- aggregate(y_obs, list(a_treat), mean)
+group_count <- aggregate(y_obs, list(a_treat), length)
+t_obs <- group_mean_dat[1, 2] - group_mean_dat[2, 2]
+a <- c(rep(1, 177), rep(0, 372))
+a_bold <- genperms(a)
+
+rdist = rep(NA, times = ncol(a_bold))
+for (i in 1:ncol(a_bold)) {
+  a_tilde = a_bold[, i]
+  rdist[i] = mean(y_obs[a_tilde == 1]) - mean(y_obs[a_tilde == 0])
+}
+p_val <- mean(rdist >= abs(t_obs))
+p_val
+```
+
+
+```{r}
+y_obs = data$re78
+a = data$treat
+group_means_df = aggregate(y_obs, list(a), mean)
+group_counts = aggregate(y_obs, list(a), length)
+t_obs = group_means_df[1, 2] - group_means_df[2, 2]
+a = c(rep(1, 184), rep(0, 380)) # numbers taken from group_counts
+a_bold = genperms(a)
+rdist = rep(NA, times = ncol(a_bold))
+for (i in 1:ncol(a_bold)) {
+  a_tilde = a_bold[, i]
+  rdist[i] = mean(y_obs[a_tilde == 1]) - mean(y_obs[a_tilde == 0])
+}
+pval = mean(rdist >= abs(t_obs))
+pval
+```
+
 # Part 2
 
 a) Write the non-parametric structural equation model associated with it.
@@ -340,7 +440,7 @@ $L = f_L(U, A, \epsilon_L)$
 
 $A = f_A(\epsilon_A)$
 
-* Conditioning on L would not properly adjust for confounding. In this DAG, A is not associated with Y. 
+* Conditioning on L would not properly adjust for confounding, as L is a collider. In this DAG, A is also not associated with Y. 
 
 ## DAG 4
 
