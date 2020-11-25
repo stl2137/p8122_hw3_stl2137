@@ -301,3 +301,69 @@ print(tab_s2, smd = TRUE)
 print(tab_s3, smd = TRUE)
 ```
 
+# Part 2
+
+a) Write the non-parametric structural equation model associated with it.
+
+b) Does conditioning on L properly adjust for confounding if we used the definition of confounder based on the backdoor criterion? Justify your answer.
+
+
+## DAG 1
+
+$Y = f_Y(A, L, \epsilon_Y)$
+
+$A = f_A(L, \epsilon_A)$ 
+
+$L = f_L(\epsilon_L)$
+
+* Conditioning on L would properly adjust for confounding, as it would block the path A-L-Y. 
+
+## DAG 2
+
+$Y = f_Y(U, A, L, \epsilon_Y)$
+
+$A = f_A(L, \epsilon_A)$ 
+
+$L = f_L(U, \epsilon_L)$
+
+$U = f_U(\epsilon_U)$
+
+* Conditioning on L would properly adjust for confounding, as it would block the path A-L-U-Y. 
+
+## DAG 3
+
+$Y = f_Y(U, \epsilon_Y)$
+
+$U = f_U(\epsilon_U)$
+
+$L = f_L(U, A, \epsilon_L)$ 
+
+$A = f_A(\epsilon_A)$
+
+* Conditioning on L would not properly adjust for confounding. In this DAG, A is not associated with Y. 
+
+## DAG 4
+
+$Y = f_Y(A, L, \epsilon_Y)$
+
+$A = f_A(U, \epsilon_A)$
+
+$L = f_L(U, \epsilon_L)$ 
+
+$U = f_U(\epsilon_U)$
+
+* Conditioning on L would properly adjust for confounding, as it would block the path A-U-L-Y. 
+
+## DAG 5
+
+$Y = f_Y(A, U_1, \epsilon_Y)$
+
+$A = f_A(U_2, \epsilon_A)$
+
+$U_2 = f_{U_2}(\epsilon_{U_2})$
+
+$U_1 = f_{U_1}(\epsilon_{U_1})$
+
+$L = f_L(U_1, U_2, \epsilon_L)$ 
+
+* Conditioning on L would not properly adjust for confounding, as L is a collider. Thus, we do not want to condition on L. 
