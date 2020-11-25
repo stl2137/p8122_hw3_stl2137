@@ -155,7 +155,7 @@ print(tab_presub, smd = TRUE)
 print(tab_postsub, smd = TRUE)
 ```
 
-* Comparing the pre- and post- trimmed samples, the post-trimmed sample had lower SMDs compared to the pre-trimmed samples except for `hispan`, which will be discussed further. The SMDs that were high in the pre-trimmed sample (`black`, `re74`) are lower in the post-trimmed sample (`black` decreased from 1.671 to 1.421, and `re74` decreased from 0.596 to 0.159.) The SMDs for `age`, `educ`, and `re75` also decreased, making them now all below the 0.2 threshold 
+* Comparing the pre- and post- trimmed samples, the post-trimmed sample had lower SMDs compared to the pre-trimmed samples except for `hispan`, which will be discussed further. The SMDs that were high in the pre-trimmed sample (`black`, `re74`) are lower in the post-trimmed sample (`black` decreased from 1.671 to 1.421, and `re74` decreased from 0.596 to 0.159.) The SMDs for `age` (from 0.242 to 0.027), `educ` (0.045 to 0.038), and `re75` (0.287 to 0.123) also decreased, making them now all below the 0.2 threshold; however, the SMD for `hispan` increased (from 0.227 to 0.382), making it even higher above the 0.2 threshold. 
 
 ```{r}
 ### visualization of overlap post trimming
@@ -163,7 +163,7 @@ print(tab_postsub, smd = TRUE)
 prop_func_post_trim <- function(x, trt)
 {
     # fit propensity score model
-  propens.model <- glm(treat ~ age + educ + black + hispan + married + nodegree + re74 + re75, data = data, family = binomial)
+  propens.model <- glm(treat ~ age + educ + black + hispan + re74 + re75, data = data, family = binomial)
   pi.x <- predict(propens.model, type = "response")
   pi.x
 }
@@ -229,7 +229,7 @@ table(data$treat, subclass)
 
 ```{r}
 #creating subclasses
-subclass.breaks = quantile(data$ps, c(.48, 0.5, 0.75)) 
+subclass.breaks = quantile(data$ps, c(0.55, 0.6, 0.75)) 
 subclass = data$ps
 subclass = as.numeric(data$ps>subclass.breaks[1])
 subclass[which(data$ps>subclass.breaks[1]& data$ps<=subclass.breaks[2])]<- 1
@@ -239,10 +239,11 @@ subclass[which(data$ps>subclass.breaks[3])]<- 3
 table(data$treat, subclass)
 ```
 
-* After additional searching, having 4 subclasses with percentile breaks at 0.48, 0.5, and 0.75 seems to lead to better balance across the subclasses. Although the first subclass still has sub-optimal covariate balance and the last subclass does not have the best covariate balance, the second and third subclasses have pretty good balance. We will proceed to inspect the covariate balance for each subclass more in depth. 
+* After additional searching, having 4 subclasses with percentile breaks at 0.55, 0.6, 0.75 seems to lead to better balance across the subclasses. Although the first and last subclass still have sub-optimal covariate balance, the second and third subclasses have pretty good balance. We will proceed to inspect the covariate balance for each subclass more in depth. 
 
+### Subclass 1
 ```{r}
-#looking at propensity scores within subclasses
+#looking at propensity scores within subclass 1
 prop.func <- function(x, trt)
 {
   
@@ -254,18 +255,41 @@ check.overlap(x = data[which(data$ps <=subclass.breaks[1]),],
               type = "both",
               propensity.func = prop.func)
 
+### Looking at SMD
+tab_s0 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==0),], test = FALSE)
 
+print(tab_s0, smd = TRUE)
+```
+
+* The density plot for subclass 1 looks acceptable enough and is better than before subclassification, though there still is right skewedness from the no treatment group. Despite this, the covariate balance appears to be better, as the density plots overlay each other a fair amount. This skewness is not unsurprising, as the more extreme values would be placed in the first and last subgroups. 
+
+* For the first subgroup, the SMD is below 0.2 for the variables `age`, `educ`, `hispan`, `re75`; however, the SMD for the variables `black` and `re74` are above the 0.2 threshold. 
+
+### Subclass 2
+```{r}
 prop.func <- function(x, trt)
 {
  
   data$ps[which(data$ps>subclass.breaks[1]&data$ps<=subclass.breaks[2])]
 }
-#data$ps <-ps
+
 check.overlap(x = data[which(data$ps>subclass.breaks[1]&data$ps<=subclass.breaks[2]),],
               trt = data$treat[which(data$ps>subclass.breaks[1]&data$ps<=subclass.breaks[2])],
               type = "both",
               propensity.func = prop.func)
 
+### checking SMD
+tab_s1 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==1),], test = FALSE)
+
+print(tab_s1, smd = TRUE)
+```
+
+* The density plot for subclass 2 looks pretty balanced, as the two density plots almost overlay each other, implying that there is decent covariate balance.
+
+* For the second subgroup, the SMD is below 0.2 for the variables `black`, `hispan`, and `re75`; however, the SMD for the variables `age` and `educ` are above both the 0.2 threshold and the 0.25 threshold found in the literature. The variable `re74`, with a SMD of 0.236 is above the 0.2 threshold but below the 0.25 threhold. 
+
+### Subclass 3
+```{r}
 prop.func <- function(x, trt)
 {
   
@@ -277,39 +301,41 @@ check.overlap(x = data[which(data$ps>subclass.breaks[2]&data$ps<=subclass.breaks
               type = "both",
               propensity.func = prop.func)
 
+### checking SMD
+tab_s2 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==2),], test = FALSE)
 
+print(tab_s2, smd = TRUE)
+```
 
+* The density plot for subclass 3 looks fairly good, as the density plots overlay each other mostly. This implies that the covariate balance appears to be decent within this subgroup
+
+* For the third subgroup, the SMD is below 0.2 for the variables `educ`, `black`, `hispan`, `re74`, and `re75`; however, the SMD for the variable `age` are above the 0.2 threshold. 
+
+### Subclass 4
+```{r}
  prop.func <- function(x, trt)
  {
    
    data$ps[which(data$ps>subclass.breaks[3])]
  }
- #data$ps <-ps
+
  check.overlap(x = data[which(data$ps>subclass.breaks[3]),],
                trt = data$treat[which(data$ps>subclass.breaks[3])],
                type = "both",
                propensity.func = prop.func)
- 
 
-```
-
-```{r}
-tab_s0 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==0),], test = FALSE)
-tab_s1 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==1),], test = FALSE)
-tab_s2 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==2),], test = FALSE)
+### Checking SMD
 tab_s3 <- CreateTableOne(vars = vars, strata = "treat", data = data[which(subclass==3),], test = FALSE)
 
-## Show table with SMD
-
-print(tab_s0, smd = TRUE)
-print(tab_s1, smd = TRUE)
-print(tab_s2, smd = TRUE)
 print(tab_s3, smd = TRUE)
 ```
 
+* The density plot for subclass 4 looks pretty good for the most part, though there still is right skewedness from both treatment groups. Despite this, the covariate balance appears to be better, as the density plots overlay each other quite closely. This skewness is not unsurprising, as the more extreme values would be placed in the first and last subgroups, which is seen for the scores higher than 0.75.
+
+* For the fourth and last subgroup, the SMD is below 0.2 for the variables `black`, `hispan`, and `re75`; however, the SMD for the variables `age`, `educ`, and `re74` are above the 0.2 threshold. 
+
 ## Subpart 7
 Using your subclasses from Question (6), estimate the marginal average causal effect of participation in a job training on wages. Give a point estimate, a confidence interval, and a p-value for whether it had any effect, and interpret these results in context.
-
 
 ```{r}
 ACE0 <- mean(data$re78[which(subclass==0 & data$treat==1)])-mean(data$re78[which(subclass==0 & data$treat==0)])
@@ -371,7 +397,7 @@ a_treat <- data$treat
 group_mean_dat <- aggregate(y_obs, list(a_treat), mean)
 group_count <- aggregate(y_obs, list(a_treat), length)
 t_obs <- group_mean_dat[1, 2] - group_mean_dat[2, 2]
-a <- c(rep(1, 177), rep(0, 372))
+a <- c(rep(1, 185), rep(0, 325))
 a_bold <- genperms(a)
 
 rdist = rep(NA, times = ncol(a_bold))
@@ -384,22 +410,6 @@ p_val
 ```
 
 
-```{r}
-y_obs = data$re78
-a = data$treat
-group_means_df = aggregate(y_obs, list(a), mean)
-group_counts = aggregate(y_obs, list(a), length)
-t_obs = group_means_df[1, 2] - group_means_df[2, 2]
-a = c(rep(1, 184), rep(0, 380)) # numbers taken from group_counts
-a_bold = genperms(a)
-rdist = rep(NA, times = ncol(a_bold))
-for (i in 1:ncol(a_bold)) {
-  a_tilde = a_bold[, i]
-  rdist[i] = mean(y_obs[a_tilde == 1]) - mean(y_obs[a_tilde == 0])
-}
-pval = mean(rdist >= abs(t_obs))
-pval
-```
 
 # Part 2
 
