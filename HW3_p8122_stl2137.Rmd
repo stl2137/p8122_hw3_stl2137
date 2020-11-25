@@ -60,6 +60,7 @@ salary_dat <- as.data.frame(salary_dat)
 Write the DAG representing this observational study including all variables provided. Describe all the variables in the graph.
 
 ```{r}
+### include screenshot of DAG from `daggity`  
 knitr::include_graphics("./HW3_p8122_DAG.png")
 ```
 
@@ -409,6 +410,19 @@ p_val <- mean(rdist >= abs(t_obs))
 p_val
 ```
 
+* The estimated marginal average causal effect of participation in a job training on wages is `r ace`, with a confidence interval of (`r CIL`, `r CIU`) and a p-value of `r p_val`. Although `r ace` is positive and thus implying that job training has a positive causal effect on wages, the wide confidence interval that crosses 0 paired with the p-value `r p_val` > 0.05 leads us to reject the null hypothesis that there is a causal relationship between job training and wages. 
+
+## Subpart 8
+Estimate the marginal average causal effect between training and salary in this observa- tional study using direct adjustment of confounders. Interpret the results and compare the results with what obtained using the subclassification approach.
+
+```{r}
+ace_no_sub <- mean(data$re78[which(data$treat==1)]) - mean(data$re78[which(data$treat==0)])
+```
+
+* Comparing the ACE using the direct adjustment of confounders vs. the ACE obtained using subclassification, the ACE using the direct adjustment of confounders is lower but still positive at `r ace_no_sub`, compared to the the ACE of `r ace` obtained from subclassification. Thus the ACE found using direct adjustment would also conclude that there is a positive causual effect from training to wages but has a smaller magnitude. 
+
+## Subpart 9
+Discuss advantages and disadvantages of the regression based approach to confounding ad- justment and the subclassification approach.
 
 
 # Part 2
